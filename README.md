@@ -6,7 +6,7 @@ Download [summarize_elo.py](https://github.com/foxrainowo/TestingKatagoNetworks/
 
 **Normal Usage:**
 
-	py summarize_elo.py "path" -stand {number} -prior {number} -create {v/p/t} -color -first-advantage -recursive
+	py summarize_elo.py "path" -standard {number} -prior {number} -create {v/p/t} -color -first-advantage -recursive
  
 **For Instructions:**
 
