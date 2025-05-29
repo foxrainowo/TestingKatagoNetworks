@@ -17,7 +17,7 @@ Player = str
 PlayerIdx = int
 
 # ========HOW TO USE========================================================
-# py summarize_elo.py "path" -stand {number} -prior {number} -create {v/p/t} -color -first-advantage -recursive
+# py summarize_elo.py "path" -standard {number} -prior {number} -create {v/p/t} -color -first-advantage -recursive
 # py summarize_elo.py -h
 
 # ========SETTINGS TO COVER THE COMMAND=====================================
@@ -1189,7 +1189,7 @@ if __name__ == "__main__":
         default=0,
     )
     parser.add_argument(
-        "-stand",
+        "-standard",
         help="The numbers of standard deviation",
         required=False,
         type=float,
@@ -1225,7 +1225,7 @@ if __name__ == "__main__":
     if 'Standard_Deviation' in globals():
         standard_deviation = globals()['Standard_Deviation']
     else:
-        standard_deviation = args["stand"]
+        standard_deviation = args["standard"]
 
     if 'Prior_Games' in globals():
         prior_games = globals()['Prior_Games']
