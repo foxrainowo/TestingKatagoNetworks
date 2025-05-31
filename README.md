@@ -13,7 +13,7 @@ Download [summarize_elo.py](https://github.com/foxrainowo/TestingKatagoNetworks/
 	py summarize_elo.py -h
  
 ### How to contribute
-I would collect *Game Record* and *Networks* from public channels or You can send it to me.
+I would collect *Game Records(SGFs)* and *Networks(bin.gz)* from public channels or You can send it to me.
 
 **Standard requirements:**
 - Only 19×19 board.
