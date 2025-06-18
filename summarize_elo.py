@@ -4,6 +4,7 @@ import math
 import os
 import re
 import copy
+from itertools import zip_longest
 import numpy as np
 import scipy.stats
 import scipy.special
@@ -185,7 +186,7 @@ class EloInfo:
         max_name_len = max(len(str(name)) for name in pla_names) if pla_names else 0
         lines = []
         for player in self.players:
-            lines.append(f" {str(player):>{max_name_len}} : {self.elo[player]:8.2f} +/- {self.elo_stderr[player]:5.2f}")
+            lines.append(f"{str(player):>{max_name_len}}:{self.elo[player]:9.1f} +/- {self.elo_stderr[player]:<.1f}")
         return "\n".join(lines)
 
 
@@ -659,7 +660,7 @@ class GameResultSummary:
             los_row = []
             for player2 in real_players:
                 los = elo_info.get_approx_likelihood_of_superiority(player,player2)
-                los_row.append(f"{los*100:.2f}")
+                los_row.append(f"{los*100:.1f}")
             los_matrix.append(los_row)
         self._print_matrix(real_players,los_matrix)
             
@@ -680,7 +681,7 @@ class GameResultSummary:
                         if total <= 0:
                             row.append("-")
                         else:
-                            row.append(f"{surprise:.2f}")
+                            row.append(f"{surprise:.1f}")
                 surprise_matrix.append(row)
         # print("Log10odds surprise matrix given the maximum-likelihood Elos:")
         # print("E.g. +3.0 means a 1:1000 unexpected good performance by row vs column.")
@@ -706,7 +707,7 @@ class GameResultSummary:
                     if total <= 0:
                         row.append("-")
                     else:
-                        row.append(f"{draw}({draw/total*100:.1f}%)") 
+                        row.append(f"{draw}/{draw/total*100:.1f}%") 
             result_matrix.append(row)
         self._print_matrix(real_players,result_matrix)
 
@@ -730,34 +731,39 @@ class GameResultSummary:
             result_matrix.append(row)
         self._print_matrix(real_players,result_matrix)
 
-        try:
-            Average_WHITE_winrate = 0
-            Bot = 0 
-            result_matrix = []
-            for pla1 in real_players:
-                row = []
-                for pla2 in real_players:
-                    if (pla1 == pla2):
+        # try:
+        Average_WHITE_winrate = 0
+        Total_White_wins = 0
+        Total_Win = 0
+        result_matrix = []
+        for pla1 in real_players:
+            row = []
+            for pla2 in real_players:
+                if (pla1 == pla2):
+                    row.append("-")
+                    continue
+                else:
+                    pla1_pla2 = self.results[(pla1, pla2)] if (pla1, pla2) in self.results else GameRecord(pla1,pla2)
+                    pla2_pla1 = self.results[(pla2, pla1)] if (pla2, pla1) in self.results else GameRecord(pla2,pla1)
+                    white_wins = pla2_pla1.white_wins
+                    win = pla1_pla2.win + pla2_pla1.loss + 0.5 * (pla1_pla2.draw + pla2_pla1.draw)
+                    total = pla1_pla2.win + pla2_pla1.win + pla1_pla2.loss + pla2_pla1.loss + pla1_pla2.draw + pla2_pla1.draw
+                    if total <= 0:
                         row.append("-")
-                        continue
                     else:
-                        pla1_pla2 = self.results[(pla1, pla2)] if (pla1, pla2) in self.results else GameRecord(pla1,pla2)
-                        pla2_pla1 = self.results[(pla2, pla1)] if (pla2, pla1) in self.results else GameRecord(pla2,pla1)
-                        white_wins=pla2_pla1.white_wins
-                        win = pla1_pla2.win + pla2_pla1.loss + 0.5 * (pla1_pla2.draw + pla2_pla1.draw)
-                        total = pla1_pla2.win + pla2_pla1.win + pla1_pla2.loss + pla2_pla1.loss + pla1_pla2.draw + pla2_pla1.draw
-                        if total <= 0:
-                            row.append("-")
+                        Total_White_wins += white_wins
+                        Total_Win += win
+                        if ( win == 0 ):
+                            row.append("0.0%")
                         else:
-                            row.append(f"{white_wins/win*100:.2f}%")
-                            Bot = Bot + 1
-                            Average_WHITE_winrate += (white_wins/win*100)
-                result_matrix.append(row)
-            print(color_256(39) + "【Percentage of White in winning games | Average:" + f"{Average_WHITE_winrate/(Bot):0.2f}" + "】" + Style.RESET_ALL)
-            self._print_matrix(real_players,result_matrix)
+                            row.append(f"{white_wins/win*100:.1f}%")
+                Average_WHITE_winrate = (Total_White_wins/Total_Win*100)
+            result_matrix.append(row)
+        print(color_256(39) + "【Percentage of White in winning games | Average:" + f"{Average_WHITE_winrate:.2f}" + "】" + Style.RESET_ALL)
+        self._print_matrix(real_players,result_matrix)
             
-        except:
-            pass
+        # except:
+        #     pass
 
         try:
             result_matrix = []
@@ -776,7 +782,7 @@ class GameResultSummary:
                         if total <= 0:
                             row.append("-")
                         else:
-                            row.append(f"{visits/moves:.2f}")
+                            row.append(f"{visits/moves:.1f}")
                 result_matrix.append(row)
             print(color_256(139) + "【Average visits per move (higher means more tree reuse)】" + Style.RESET_ALL)
             self._print_matrix(real_players,result_matrix)
@@ -785,29 +791,33 @@ class GameResultSummary:
             pass
 
         try:
-            result_matrix = []
+            results = []
             for pla1 in real_players:
-                row = []
+                Total_time = 0
+                Total_moves = 0
                 for pla2 in real_players:
-                    if (pla1 == pla2):
-                        row.append("-")
-                        continue
-                    else:
-                        pla1_pla2 = self.results[(pla1, pla2)] if (pla1, pla2) in self.results else GameRecord(pla1,pla2)
-                        pla2_pla1 = self.results[(pla2, pla1)] if (pla2, pla1) in self.results else GameRecord(pla2,pla1)
-                        time = pla1_pla2.black_time + pla2_pla1.white_time
-                        moves = pla1_pla2.black_moves + pla2_pla1.white_moves
-                        total = pla1_pla2.win + pla2_pla1.win + pla1_pla2.loss + pla2_pla1.loss + pla1_pla2.draw + pla2_pla1.draw
-                        if total <= 0:
-                            row.append("-")
-                        else:
-                            row.append(f"{time/moves:.3f}")
-                result_matrix.append(row)
+                    if pla1 != pla2:
+                        pla1_pla2 = self.results.get((pla1, pla2), GameRecord(pla1, pla2))
+                        pla2_pla1 = self.results.get((pla2, pla1), GameRecord(pla2, pla1))
+                        Total_time += pla1_pla2.black_time + pla2_pla1.white_time
+                        Total_moves += pla1_pla2.black_moves + pla2_pla1.white_moves
+                if Total_moves > 0:
+                    avg_time = Total_time / Total_moves
+                    results.append((pla1, avg_time))
+            max_name_len = max(len(str(name)) for name in real_players) if real_players else 0
+            indent = max_name_len // 2
+            sorted_results = sorted(results, key=lambda x: x[1])
             print(color_256(179) + "【Average time per move but may not accurate due to devices】" + Style.RESET_ALL)
-            self._print_matrix(real_players,result_matrix)
-            
+            print(f"{"Sort_by_strength":>{indent+10}}{" "*(max_name_len-5)}{"Sort_by_time"}")
+            for orig, sorted_ in zip_longest(results, sorted_results, fillvalue=("", 0)):
+                left_str = f"{str(orig[0]):>{max_name_len}}: {orig[1]:.2f}" if orig[0] else ""
+                right_str = f"{str(sorted_[0])}: {sorted_[1]:.2f}" if sorted_[0] else ""
+                orig_len = f"{orig[1]:.2f}"
+                # print(len(str(orig_len)))
+                print(f"{left_str}{" "*(8 - len(str(orig_len)))}{right_str:>{max_name_len+6}}")
         except:
             pass
+
         # print(color_256(39) + "\nAverage_WHITE_winrate:" + f"{Average_WHITE_winrate/(Bot):0.2f}" + Style.RESET_ALL)
         # print(f"Used a prior of {self._elo_prior_games} games worth that each player is near Elo 0.")
         print("")
@@ -939,11 +949,11 @@ class GameResultSummary:
         per_elt_space += 2
 
         per_name_space = 1 if len(pla_names) == 0 else max(len(name) for name in pla_names)
-        per_name_space += 1
+        # per_name_space += 1
         if per_name_space > per_elt_space:
             per_elt_space += 1
 
-        row_format = f"{{:>{per_name_space}}}" +   f"{{:>{per_elt_space}}}" * len(results_matrix)
+        row_format = f"{{:>{per_name_space}}}" +  f"{{:>{per_elt_space}}}" * len(results_matrix)
         print(row_format.format("", *[name[:per_elt_space-2] for name in pla_names]))
         for name, row in zip(pla_names, results_matrix):
             print(row_format.format(name, *row))
@@ -965,40 +975,83 @@ class GameResultSummary:
 
         print(color_256(123) + "【Wins/Total games by row player against column player】" + Style.RESET_ALL)
         result_matrix = []
+        all_total = []
         for pla1 in pla_names:
             row = []
             for pla2 in pla_names:
-                if (pla1 == pla2):
-                    row.append("-")
-                    continue
-                else:
+                if (pla1 != pla2):
                     pla1_pla2 = self.results[(pla1, pla2)] if (pla1, pla2) in self.results else GameRecord(pla1,pla2)
                     pla2_pla1 = self.results[(pla2, pla1)] if (pla2, pla1) in self.results else GameRecord(pla2,pla1)
                     win = pla1_pla2.win + pla2_pla1.loss + 0.5 * (pla1_pla2.draw + pla2_pla1.draw)
                     total = pla1_pla2.win + pla2_pla1.win + pla1_pla2.loss + pla2_pla1.loss + pla1_pla2.draw + pla2_pla1.draw
-                    row.append(f"{win:.1f}/{total:.0f}")
+                    all_total.append(total)
+                else:
+                    pass
+        total_len = max(len(str(long)) for long in all_total) if all_total else 0
+        # print(total_len)
+        for pla1 in pla_names:
+            row = []
+            for pla2 in pla_names:
+                if (pla1 == pla2):
+                    row.append("-"+" "*total_len)
+                    continue
+                else:
+                    all_total = []
+                    pla1_pla2 = self.results[(pla1, pla2)] if (pla1, pla2) in self.results else GameRecord(pla1,pla2)
+                    pla2_pla1 = self.results[(pla2, pla1)] if (pla2, pla1) in self.results else GameRecord(pla2,pla1)
+                    win = pla1_pla2.win + pla2_pla1.loss + 0.5 * (pla1_pla2.draw + pla2_pla1.draw)
+                    total = pla1_pla2.win + pla2_pla1.win + pla1_pla2.loss + pla2_pla1.loss + pla1_pla2.draw + pla2_pla1.draw
+                    row.append(f"{win:.1f}/{total:<{total_len}}")
             result_matrix.append(row)
         self._print_matrix(pla_names,result_matrix)
 
-        print(color_256(214) + "【Winrate by row player against column player】" + Style.RESET_ALL)
+
         result_matrix = []
+        for pla1 in pla_names:
+            row = []
+            all_ELO = []
+            for pla2 in pla_names:
+                if (pla1 != pla2):
+                    pla1_pla2 = self.results[(pla1, pla2)] if (pla1, pla2) in self.results else GameRecord(pla1,pla2)
+                    pla2_pla1 = self.results[(pla2, pla1)] if (pla2, pla1) in self.results else GameRecord(pla2,pla1)
+                    win = pla1_pla2.win + pla2_pla1.loss + 0.5 * (pla1_pla2.draw + pla2_pla1.draw)
+                    total = pla1_pla2.win + pla2_pla1.win + pla1_pla2.loss + pla2_pla1.loss + pla1_pla2.draw + pla2_pla1.draw
+                    winrate = win/total*100
+                    if ( winrate <= 0.1 ):
+                        pass
+                    elif ( winrate >= 99.9 ):
+                        pass
+                    else:
+                        ELO = f"{400*math.log10((winrate)/(100-winrate)):.0f}"
+                    all_ELO.append(ELO)
+            total_len_ELO = max(len(str(long_ELO)) for long_ELO in all_ELO)
+            # print(all_ELO,total_len_ELO)
+
         for pla1 in pla_names:
             row = []
             for pla2 in pla_names:
                 if (pla1 == pla2):
-                    row.append("-")
+                    row.append("-"+" "*(total_len_ELO))
                     continue
                 else:
                     pla1_pla2 = self.results[(pla1, pla2)] if (pla1, pla2) in self.results else GameRecord(pla1,pla2)
                     pla2_pla1 = self.results[(pla2, pla1)] if (pla2, pla1) in self.results else GameRecord(pla2,pla1)
                     win = pla1_pla2.win + pla2_pla1.loss + 0.5 * (pla1_pla2.draw + pla2_pla1.draw)
                     total = pla1_pla2.win + pla2_pla1.win + pla1_pla2.loss + pla2_pla1.loss + pla1_pla2.draw + pla2_pla1.draw
-                    if total <= 0:
-                        row.append("-")
+                    winrate = win/total*100
+                    if ( winrate <= 0.1 ):
+                        row.append(f"{winrate:.1f}%/-INF"+" "*(total_len_ELO-4))
+                    elif ( winrate >= 99.9 ):
+                        row.append(f"{winrate:.1f}%/+INF"+" "*(total_len_ELO-4))
+                    elif ( winrate == 50 ):
+                        row.append(f"{winrate:.1f}%/"+" "*(total_len_ELO-1)+"0")
                     else:
-                        row.append(f"{win/total*100.0:.2f}%")
+                        sign = "+" if winrate >= 50 else "-"
+                        fiex = 1 if winrate >= 50 else -1
+                        elo = f"{fiex*400*math.log10((winrate)/(100-winrate)):.0f}"
+                        row.append(f"{winrate:.1f}%/{sign}{elo:>{total_len_ELO-1}}")
             result_matrix.append(row)
-
+        print(color_256(214) + "【Winrate by row player against column player】" + Style.RESET_ALL)
         self._print_matrix(pla_names,result_matrix)
 
     def new_method(self):
@@ -1049,7 +1102,7 @@ class GoGameResultSummary(GameResultSummary):
     def print_elos(self):
         super().print_elos()
         if self._should_warn_handicap_komi:
-            print('\033[91m'+"WARNING: There are handicap games or games with komi < 5.5 or komi > 7.5, these games may not be fair?"+ '\x1b[0m')
+            print('\033[91m'+"WARNING: There are handicap games or games with komi < 5.5 or komi > 7.5, these games may not be fair?\n"+ '\x1b[0m')
 
     # @override
     def is_game_file(self, input_file: str) -> bool:
@@ -1248,3 +1301,4 @@ if __name__ == "__main__":
         game_result_summary.add_games_from_file_or_dir(input_file_or_dir, recursive=recursive)
 
     game_result_summary.print_elos()
+    
