@@ -686,12 +686,12 @@ class GameResultSummary:
         # print("Log10odds surprise matrix given the maximum-likelihood Elos:")
         # print("E.g. +3.0 means a 1:1000 unexpected good performance by row vs column.")
         # print("E.g. -4.0 means a 1:10000 unexpected bad performance by row vs column.")
-            print(color_256(155) + "【Rock/paper/scissors or Elo is not a good model for the data】" + Style.RESET_ALL)
+            print(color_256(118) + "【Rock/paper/scissors or Elo is not a good model for the data】" + Style.RESET_ALL)
             self._print_matrix(real_players,surprise_matrix)
         except:
             pass
 
-        print(color_256(99) + "【Total of draws and invalid games with other players】" + Style.RESET_ALL)
+        print(color_256(105) + "【Total of draws and invalid games with other players】" + Style.RESET_ALL)
         result_matrix = []
         for pla1 in real_players:
             row = []
@@ -711,7 +711,7 @@ class GameResultSummary:
             result_matrix.append(row)
         self._print_matrix(real_players,result_matrix)
 
-        print(color_256(34) + "【Average number of moves per game with other players】" + Style.RESET_ALL)
+        print(color_256(35) + "【Average number of moves per game with other players】" + Style.RESET_ALL)
         result_matrix = []
         for pla1 in real_players:
             row = []
@@ -784,7 +784,7 @@ class GameResultSummary:
                         else:
                             row.append(f"{visits/moves:.1f}")
                 result_matrix.append(row)
-            print(color_256(139) + "【Average visits per move (higher means more tree reuse)】" + Style.RESET_ALL)
+            print(color_256(139) + "【Average visits per move - higher means more tree reuse】" + Style.RESET_ALL)
             self._print_matrix(real_players,result_matrix)
             
         except:
@@ -973,9 +973,10 @@ class GameResultSummary:
                     total += pla1_pla2.win + pla2_pla1.win + pla1_pla2.loss + pla2_pla1.loss + pla1_pla2.draw + pla2_pla1.draw
             print(f"{str(pla1):>{max_name_len}}: {total}")
 
-        print(color_256(123) + "【Wins/Total games by row player against column player】" + Style.RESET_ALL)
+        print(color_256(117) + "【Wins/Total games by row player against column player】" + Style.RESET_ALL)
         result_matrix = []
         all_total = []
+        all_win = []
         for pla1 in pla_names:
             row = []
             for pla2 in pla_names:
@@ -984,11 +985,18 @@ class GameResultSummary:
                     pla2_pla1 = self.results[(pla2, pla1)] if (pla2, pla1) in self.results else GameRecord(pla2,pla1)
                     win = pla1_pla2.win + pla2_pla1.loss + 0.5 * (pla1_pla2.draw + pla2_pla1.draw)
                     total = pla1_pla2.win + pla2_pla1.win + pla1_pla2.loss + pla2_pla1.loss + pla1_pla2.draw + pla2_pla1.draw
+                    all_win.append(win)
                     all_total.append(total)
                 else:
                     pass
+        win_len = 0
+        for win_each in all_win:
+            if float(win_each) % 1 != 0:
+                win_len = 1
+                break
         total_len = max(len(str(long)) for long in all_total) if all_total else 0
         # print(total_len)
+        
         for pla1 in pla_names:
             row = []
             for pla2 in pla_names:
@@ -1001,10 +1009,9 @@ class GameResultSummary:
                     pla2_pla1 = self.results[(pla2, pla1)] if (pla2, pla1) in self.results else GameRecord(pla2,pla1)
                     win = pla1_pla2.win + pla2_pla1.loss + 0.5 * (pla1_pla2.draw + pla2_pla1.draw)
                     total = pla1_pla2.win + pla2_pla1.win + pla1_pla2.loss + pla2_pla1.loss + pla1_pla2.draw + pla2_pla1.draw
-                    row.append(f"{win:.1f}/{total:<{total_len}}")
+                    row.append(f"{win:.{win_len}f}/{total:<{total_len}}")
             result_matrix.append(row)
         self._print_matrix(pla_names,result_matrix)
-
 
         result_matrix = []
         for pla1 in pla_names:
@@ -1017,15 +1024,15 @@ class GameResultSummary:
                     win = pla1_pla2.win + pla2_pla1.loss + 0.5 * (pla1_pla2.draw + pla2_pla1.draw)
                     total = pla1_pla2.win + pla2_pla1.win + pla1_pla2.loss + pla2_pla1.loss + pla1_pla2.draw + pla2_pla1.draw
                     winrate = win/total*100
-                    if ( winrate <= 0.1 ):
-                        pass
-                    elif ( winrate >= 99.9 ):
+                    if ( winrate <= 1) | (winrate >= 99):
+                        ELO = f".INF"
                         pass
                     else:
                         ELO = f"{400*math.log10((winrate)/(100-winrate)):.0f}"
+                    # print(win,total,winrate,ELO)
                     all_ELO.append(ELO)
             total_len_ELO = max(len(str(long_ELO)) for long_ELO in all_ELO)
-            # print(all_ELO,total_len_ELO)
+        # print(all_ELO,total_len_ELO)
 
         for pla1 in pla_names:
             row = []
@@ -1038,10 +1045,13 @@ class GameResultSummary:
                     pla2_pla1 = self.results[(pla2, pla1)] if (pla2, pla1) in self.results else GameRecord(pla2,pla1)
                     win = pla1_pla2.win + pla2_pla1.loss + 0.5 * (pla1_pla2.draw + pla2_pla1.draw)
                     total = pla1_pla2.win + pla2_pla1.win + pla1_pla2.loss + pla2_pla1.loss + pla1_pla2.draw + pla2_pla1.draw
-                    winrate = win/total*100
-                    if ( winrate <= 0.1 ):
+                    if (total != 0):
+                        winrate = win/total*100
+                    else:
+                        pass
+                    if ( winrate <= 1 ):
                         row.append(f"{winrate:.1f}%/-INF"+" "*(total_len_ELO-4))
-                    elif ( winrate >= 99.9 ):
+                    elif ( winrate >= 99 ):
                         row.append(f"{winrate:.1f}%/+INF"+" "*(total_len_ELO-4))
                     elif ( winrate == 50 ):
                         row.append(f"{winrate:.1f}%/"+" "*(total_len_ELO-1)+"0")
